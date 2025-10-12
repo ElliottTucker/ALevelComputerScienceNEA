@@ -92,13 +92,10 @@ public class PlayerMovement : MonoBehaviour
            {
                rb.linearVelocity = new  Vector3(rb.linearVelocity.x, 0f, rb.linearVelocity.z);
            }
- 
-          // rb.linearDamping = groundDrag;
        }
        else
        {
            justBounce=false;
-           //rb.linearDamping = airDrag;
        }
        //checks if the player is touching any movement keys
        if (moveDirection.magnitude > 0)

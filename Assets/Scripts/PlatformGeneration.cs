@@ -112,17 +112,17 @@ public class PlatformGeneration : MonoBehaviour
            Vector3 boundMiddle = nextPlat.GetComponent<Renderer>().bounds.center;
            Vector3 boundsize = new Vector3(bound.extents.x+1f, bound.extents.y, bound.extents.z+1f);
            float castDistance = bound.extents.y + 10f;
-           /*
-           if (i>2 && mainPathNodes[i-1].platType== PlatformType.Bouncy)
-           {
-               //mainPathNodes[i].platformObject.GetComponent<Renderer>().material.color=Color.red;
-                   
-               castDistance += 20f;
-           }
-           */
+           
            Physics.SyncTransforms();
            
            if (PlatCoverCheck(boundMiddle, boundsize, castDistance))
+           {
+               Destroy(nextPlat);
+               i--;
+               continue;
+           }
+
+           if (BouncyCoverCheck(boundMiddle, boundsize, castDistance + 20f))
            {
                Destroy(nextPlat);
                i--;
@@ -177,6 +177,23 @@ public class PlatformGeneration : MonoBehaviour
             castDistance,
             platLayerMask
         ));
+    }
+
+    bool BouncyCoverCheck(Vector3 boundMiddle, Vector3 boundSize, float castDistance)
+    {
+        if (Physics.BoxCast(
+                boundMiddle,
+                boundSize,
+                Vector3.down,
+                out RaycastHit hit,
+                Quaternion.identity,
+                castDistance,
+                platLayerMask
+            ))
+        {
+            return (hit.collider != null && hit.collider.gameObject.CompareTag("BouncyPlatform"));
+        }
+        return false;
     }
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()

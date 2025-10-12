@@ -16,7 +16,7 @@ public class MainMenuUI : MonoBehaviour
             float heightPercent = SaveData.instance.GetHeightPercent();
             if (heightPercent > 0)
             {
-                loadSaveText.text = "Load current saved game " + heightPercent.ToString("F1")+"%";
+                loadSaveText.text = "Load current saved game " + heightPercent.ToString("F0")+"%";
             }
             else
             {
