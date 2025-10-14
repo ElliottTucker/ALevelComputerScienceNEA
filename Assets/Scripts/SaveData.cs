@@ -172,12 +172,10 @@ public class SaveData : MonoBehaviour
     {
         if (playerData != null)
         {
-            Debug.Log(playerData.heightPercent+" saveData");
             return playerData.heightPercent;
         }
         else
         {
-            Debug.Log("saved data is gone cz");
             return 0f;
         }
     }

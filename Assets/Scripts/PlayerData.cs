@@ -46,6 +46,5 @@ public class PlayerData
         
         heightPercent = playerPosition.y / finalPlatPos.y*100;
         heightPercent = Mathf.Clamp(heightPercent, 0f, 100f);
-        Debug.Log(heightPercent.ToString("F0")+" ignoor everthing esle");
     }
 }

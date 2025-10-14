@@ -32,6 +32,7 @@ public class PlatformGeneration : MonoBehaviour
     
     public GameObject finalPlatGO;
     private List<PlatformNode> mainPathNodes;
+    
 
     public void GenerateLevel()
     {
@@ -40,6 +41,8 @@ public class PlatformGeneration : MonoBehaviour
     
     private void GenerateMainPath()
     {
+
+        int retry = 0;
         mainPathNodes = new List<PlatformNode>();
         
         GameObject firstPlatform = GameObject.CreatePrimitive(PrimitiveType.Cube);
@@ -63,7 +66,7 @@ public class PlatformGeneration : MonoBehaviour
             
             
             float randomOffset = Random.Range(MinAngle, MaxAngle); 
-            float RandomAngle = currentAngle + randomOffset;
+            float RandomAngle = currentAngle + randomOffset; 
             
             float RandomX = Random.Range(MinSize, MaxSize); 
            float RandomZ = Random.Range(MinSize, MaxSize); 
@@ -114,30 +117,62 @@ public class PlatformGeneration : MonoBehaviour
            float castDistance = bound.extents.y + 10f;
            
            Physics.SyncTransforms();
+
+           if (retry >= 200)
+           {
+               //remove last platform
+               if (nextPlat != null)
+               {
+                   Destroy(nextPlat);
+                   nextPlat = null;
+               }
+
+               //remove upto the last 5 platforms but not the root node
+               int removeCount = Mathf.Min(5, Mathf.Max(0, mainPathNodes.Count-1));
+
+               for (int j = 0; j < removeCount; j++)
+               {
+                   int lastNodeIndex = mainPathNodes.Count - 1;
+                   PlatformNode lastNode = mainPathNodes[lastNodeIndex];
+                   if (lastNode != null && lastNode.platformObject != null)
+                   {
+                       Destroy(lastNode.platformObject);
+                   }
+                   mainPathNodes.RemoveAt(lastNodeIndex);
+               }
+
+               // take current pos to correct node
+               currentPos = mainPathNodes[mainPathNodes.Count - 1].platformObject.transform.position;
+
+               // change direction to stop deadends
+               currentAngle = (currentAngle+Random.Range(60f, 150f)) % 360f;
+
+               //reset retry counter
+               retry = 0;
+               i -= removeCount;
+               continue;
+           }
            
-           if (PlatCoverCheck(boundMiddle, boundsize, castDistance))
+           if (PlatCoverCheck(boundMiddle, boundsize, castDistance)|| BouncyCoverCheck(boundMiddle, boundsize, castDistance + 20f))
            {
-               Destroy(nextPlat);
+               if (nextPlat != null)
+               {
+                   Destroy(nextPlat);
+                   nextPlat = null;
+               }
                i--;
+               retry++;
+               Debug.Log(retry+" retries");
                continue;
            }
-
-           if (BouncyCoverCheck(boundMiddle, boundsize, castDistance + 20f))
-           {
-               Destroy(nextPlat);
-               i--;
-               continue;
-           }
-
            
            
            PlatformNode parentNode = mainPathNodes[mainPathNodes.Count - 1];
            PlatformNode newNode = new PlatformNode(parentNode, nextPlat, parentNode.depth+1 , platformType);
            mainPathNodes.Add(newNode);
            currentPos = nextPlat.transform.position;
+           retry = 0;
            
-            
-            
            maxHeight= nextPlat.transform.position.y;
            if (platformType == PlatformType.Bouncy)
            {
@@ -146,23 +181,34 @@ public class PlatformGeneration : MonoBehaviour
                if (currentAngle < 0) currentAngle += 360;
            }
         }
+
+        retry = 0;
         finalPlatGO = mainPathNodes[mainPathNodes.Count - 1].platformObject;
     }
 
     private void ChooseBranches()
     {
-        for (int i = 0; i < NumPlats; i++)
+        int lastBranch=0;
+        for (int i = 0; i < mainPathNodes.Count; i++)
         {
-            if (Random.Range(0, 25) == 1)
+            bool isNormalPlat = mainPathNodes[i].platType == PlatformType.Normal;
+            if (isNormalPlat&& Random.Range(0, 15) == 1 && i<60&& i-lastBranch>4)
             {
                 mainPathNodes[i].platformObject.GetComponent<Renderer>().material.color = Color.teal;
+                lastBranch = i;
             }
         }
     }
 
-    private void GenerateBranch()
+    private void GenerateBranch(PlatformNode startNode, float startAngle, int maxPlats)
     {
-        
+        int generatedplats = 0;
+        while (generatedplats < maxPlats)
+        {
+            
+            
+            generatedplats++;
+        }
     }
     
     
