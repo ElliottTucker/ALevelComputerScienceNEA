@@ -99,7 +99,6 @@ public class PlatformGeneration : MonoBehaviour
            if (i % 20 == 0 && i != 0)
            {
                platformType = PlatformType.Bouncy;
-               
            }
 
            if (i == 99)
@@ -153,7 +152,7 @@ public class PlatformGeneration : MonoBehaviour
                continue;
            }
            
-           if (PlatCoverCheck(boundMiddle, boundsize, castDistance)|| BouncyCoverCheck(boundMiddle, boundsize, castDistance + 20f))
+           if (BouncyCoverCheck(boundMiddle, boundsize, castDistance + 20f) || PlatCoverCheck(boundMiddle, boundsize, castDistance))
            {
                if (nextPlat != null)
                {
@@ -214,33 +213,30 @@ public class PlatformGeneration : MonoBehaviour
     
     bool PlatCoverCheck(Vector3 boundMiddle, Vector3 boundSize, float castDistance)
     {
-        return (Physics.BoxCast(
-            boundMiddle,
-            boundSize,
-            Vector3.down,
-            out RaycastHit hit,
-            Quaternion.identity,
-            castDistance,
-            platLayerMask
-        ));
+        if (Physics.BoxCast(boundMiddle, boundSize, Vector3.down, out RaycastHit hit, Quaternion.identity, castDistance, platLayerMask))
+        {
+            //dont hit self
+            if (hit.collider.gameObject == null || hit.collider.gameObject == this)
+            {
+                return false;
+            }
+            return true;
+        }
+        return false;
     }
 
     bool BouncyCoverCheck(Vector3 boundMiddle, Vector3 boundSize, float castDistance)
     {
-        if (Physics.BoxCast(
-                boundMiddle,
-                boundSize,
-                Vector3.down,
-                out RaycastHit hit,
-                Quaternion.identity,
-                castDistance,
-                platLayerMask
-            ))
+        if (Physics.BoxCast(boundMiddle, boundSize, Vector3.down, out RaycastHit hit, Quaternion.identity, castDistance, platLayerMask))
         {
-            return (hit.collider != null && hit.collider.gameObject.CompareTag("BouncyPlatform"));
+            if (hit.collider != null && hit.collider.CompareTag("BouncyPlatform"))
+            {
+                return true;
+            }
         }
         return false;
     }
+
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
     {
