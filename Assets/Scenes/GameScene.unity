@@ -1152,14 +1152,17 @@ MonoBehaviour:
   MaxSize: 8
   MinAngle: -90
   MaxAngle: 90
-  MinYchange: 0.3
+  MinYchange: 0.4
   MaxYchange: 2.2
   MinXzDistance: 3
-  MaxXzDistance: 10
+  MaxXzDistance: 12
   platLayerMask:
     serializedVersion: 2
     m_Bits: 128
   seed: 0
+  minBranchLength: 30
+  maxBranchLength: 300
+  maxBranchRetries: 10
   pauseUI: {fileID: 1715774539}
   finalPlatGO: {fileID: 0}
 --- !u!1 &832575517

@@ -1,6 +1,8 @@
+using System;
 using UnityEngine;
 using System.Collections.Generic;
 using UnityEngine.UIElements;
+using Random = UnityEngine.Random;
 
 public class PlatformGeneration : MonoBehaviour
 {
@@ -20,6 +22,11 @@ public class PlatformGeneration : MonoBehaviour
     public float MaxXzDistance = 6f;
     public LayerMask platLayerMask;
     public int seed;
+
+    public int minBranchLength;
+    public int maxBranchLength;
+    public int maxBranchRetries; 
+    private List<List<PlatformNode>> branches = new List<List<PlatformNode>>();
     
 
     public static float minHeight;
@@ -36,7 +43,9 @@ public class PlatformGeneration : MonoBehaviour
 
     public void GenerateLevel()
     {
+        branches.Clear();
         GenerateMainPath();
+        ChooseBranches();
     }
     
     private void GenerateMainPath()
@@ -60,8 +69,10 @@ public class PlatformGeneration : MonoBehaviour
         currentPos = firstPlatform.transform.position;
         minHeight = currentPos.y;
         
+        int totalPlats = Mathf.Max(1, Mathf.RoundToInt(NumPlats));
+        int lastIndex  = totalPlats - 1;    
         
-        for (int i = 0; i < NumPlats; i++)
+        for (int i = 0; i < totalPlats; i++)
         {
             
             
@@ -89,7 +100,7 @@ public class PlatformGeneration : MonoBehaviour
                nextPlat.GetComponent<Renderer>().material.color = Color.blue;
            }
 
-           if (i == 99)
+           if (i == lastIndex)
            {
                nextPlat.GetComponent<Renderer>().material.color = Color.gold;
            }
@@ -101,7 +112,7 @@ public class PlatformGeneration : MonoBehaviour
                platformType = PlatformType.Bouncy;
            }
 
-           if (i == 99)
+           if (i == lastIndex)
            {
                platformType = PlatformType.Win;
            }
@@ -112,8 +123,8 @@ public class PlatformGeneration : MonoBehaviour
            Bounds bound = nextPlat.GetComponent<Renderer>().bounds;
            
            Vector3 boundMiddle = nextPlat.GetComponent<Renderer>().bounds.center;
-           Vector3 boundsize = new Vector3(bound.extents.x+1f, bound.extents.y, bound.extents.z+1f);
-           float castDistance = bound.extents.y + 10f;
+           Vector3 boundsize = new Vector3(bound.extents.x+0.6f, bound.extents.y, bound.extents.z+0.6f);
+           float castDistance = bound.extents.y + 4f;
            
            Physics.SyncTransforms();
 
@@ -149,6 +160,10 @@ public class PlatformGeneration : MonoBehaviour
                //reset retry counter
                retry = 0;
                i -= removeCount;
+               if (i < 0)
+               {
+                   i = -1;
+               }  
                continue;
            }
            
@@ -194,22 +209,178 @@ public class PlatformGeneration : MonoBehaviour
             if (isNormalPlat&& Random.Range(0, 15) == 1 && i<60&& i-lastBranch>4)
             {
                 mainPathNodes[i].platformObject.GetComponent<Renderer>().material.color = Color.teal;
+                
+                float startAngle;                                                                               
+                if (i > 0)                                                                                      
+                {                                                                                               
+                    Vector3 incoming = mainPathNodes[i].platformObject.transform.position - mainPathNodes[i - 1].platformObject.transform.position;                  
+                    startAngle = Mathf.Atan2(incoming.z, incoming.x) * Mathf.Rad2Deg;                           
+                }                                                                                               
+                else                                                                                            
+                {                                                                                               
+                    Vector3 toFinal = finalPlatGO.transform.position - mainPathNodes[i].platformObject.transform.position;                       
+                    startAngle = Mathf.Atan2(toFinal.z, toFinal.x) * Mathf.Rad2Deg;                       
+                }                                                                                            
+                int steps = Random.Range(minBranchLength, maxBranchLength + 1);                                 
+                GenerateBranch(mainPathNodes[i], startAngle, steps); 
                 lastBranch = i;
             }
         }
     }
 
     private void GenerateBranch(PlatformNode startNode, float startAngle, int maxPlats)
+{
+    Vector3 targetPos = finalPlatGO.transform.position;
+    Vector3 current = startNode.platformObject.transform.position;
+    float branchAngle = startAngle;
+
+    float topCut = minHeight + 0.8f * (maxHeight - minHeight);
+
+    List<PlatformNode> branchNodes = new List<PlatformNode>();
+    int retry = 0;                                     // ADDED: branch-level retry counter like main path
+
+    for (int i = 0; i < maxPlats; i++)
     {
-        int generatedplats = 0;
-        while (generatedplats < maxPlats)
+        if (current.y >= topCut) break;
+
+        float branchProg = (i + 1f) / maxPlats;
+        float quadraticProg = branchProg * branchProg * 1.2f;
+
+        Vector3 target = targetPos - current;
+        target.y = 0f;
+        float targetXZDegree = Mathf.Atan2(target.z, target.x) * Mathf.Rad2Deg;
+
+        float steer = 0.05f + 0.15f * quadraticProg;
+        targetXZDegree = Mathf.LerpAngle(branchAngle, targetXZDegree, steer);
+
+        Vector3 toFinalXZ = new Vector3(targetPos.x - current.x, 0f, targetPos.z - current.z);
+        float distXZ = toFinalXZ.magnitude;
+        float snapXZ = MaxXzDistance * 1.75f;
+        float nearXZ = MaxXzDistance * 6f;
+
+        float narrow = Mathf.Lerp(70f, 8f, branchProg);
+        float localNarrow = Mathf.Lerp(5f, narrow, Mathf.Clamp01((distXZ - snapXZ) / Mathf.Max(nearXZ - snapXZ, 0.0001f)));
+
+        float xzDistance = Random.Range(MinXzDistance, MaxXzDistance);
+        float platsRemaining = Mathf.Max(1, maxPlats - i);
+
+        float targetYDistance = Mathf.Clamp((targetPos.y - current.y) / platsRemaining, -MaxYchange, MaxYchange);
+        float randomY = Random.Range(MinYchange, MaxYchange);
+        float yDistance = Mathf.Lerp(randomY, targetYDistance, branchProg);
+
+        float yMargin = 0.25f * MaxYchange;
+        float remainingY = targetPos.y - current.y;
+        if (distXZ > nearXZ) yDistance *= 0.4f;
+        if (remainingY > 0f && yDistance > remainingY - yMargin) yDistance = Mathf.Max(remainingY - yMargin, 0f);
+        if (remainingY < 0f && yDistance < remainingY + yMargin) yDistance = Mathf.Min(remainingY + yMargin, 0f);
+
+        bool placed = false;
+        float finalXZ = targetXZDegree;
+        GameObject nextPlat = null;
+
+        int attempts = Mathf.Max(1, maxBranchRetries);
+        for (int j = 0; j < attempts; j++)
         {
-            
-            
-            generatedplats++;
+            float xzAngle;
+            if (distXZ <= snapXZ)                         // same idea as main: snap when close
+            {
+                xzAngle = targetXZDegree;
+                xzDistance = Mathf.Min(xzDistance, distXZ);
+            }
+            else
+            {
+                xzAngle = targetXZDegree + Random.Range(-localNarrow, localNarrow);
+            }
+
+            Vector3 dir = new Vector3(Mathf.Cos(xzAngle * Mathf.Deg2Rad), 0f, Mathf.Sin(xzAngle * Mathf.Deg2Rad)).normalized;
+            Vector3 platPosFinal = current + dir * xzDistance + new Vector3(0f, yDistance, 0f);
+
+            if (platPosFinal.y > topCut) continue;        // keep under the cap
+
+            if (nextPlat == null)
+            {
+                nextPlat = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                nextPlat.layer = 0;
+                Platform platformComponent = nextPlat.AddComponent<Platform>();
+                Vector3 platSize = new Vector3(Random.Range(MinSize, MaxSize), 0.2f, Random.Range(MinSize, MaxSize));
+                platformComponent.CreatePlatform(PlatformType.Normal, platSize);
+            }
+
+            nextPlat.transform.position = platPosFinal;
+            Physics.SyncTransforms();
+
+            Bounds bound = nextPlat.GetComponent<Renderer>().bounds;
+            Vector3 boundMiddle = bound.center;
+            Vector3 boundsize = new Vector3(bound.extents.x + 0.4f, bound.extents.y, bound.extents.z + 0.4f);
+            float castDistance = bound.extents.y + 2f;
+
+            Collider col = nextPlat.GetComponent<Collider>();
+            bool prevEnabled = false;
+            if (col != null) { prevEnabled = col.enabled; col.enabled = false; }
+            bool blocked = BouncyCoverCheck(boundMiddle, boundsize, castDistance + 20f) || PlatCoverCheck(boundMiddle, boundsize, 2f);
+            if (col != null) { col.enabled = prevEnabled; }
+
+            if (!blocked)
+            {
+                placed = true;
+                finalXZ = xzAngle;
+                break;
+            }
+        }
+
+        if (!placed)
+        {
+            if (nextPlat != null) Destroy(nextPlat);
+
+            i--;                          // ADDED: retry this same step with new randoms
+            retry++;                      // ADDED: count consecutive failures
+
+            if (retry >= 2)             // ADDED: backtrack like main path
+            {
+                int removeCount = Mathf.Min(5, Mathf.Max(0, branchNodes.Count));
+                for (int r = 0; r < removeCount; r++)
+                {
+                    int last = branchNodes.Count - 1;
+                    PlatformNode lastNode = branchNodes[last];
+                    if (lastNode != null && lastNode.platformObject != null) Destroy(lastNode.platformObject);
+                    branchNodes.RemoveAt(last);
+                }
+
+                if (branchNodes.Count > 0)
+                {
+                    current = branchNodes[branchNodes.Count - 1].platformObject.transform.position;
+                }
+                else
+                {
+                    current = startNode.platformObject.transform.position;
+                }
+
+                branchAngle = (branchAngle + Random.Range(60f, 150f)) % 360f;   // ADDED: turn to escape dead end
+                retry = 0;                                                      // ADDED
+                i -= removeCount; if (i < 0) i = -1;                            // ADDED: align loop index
+            }
+            continue;                      // ADDED: go try again
+        }
+
+        nextPlat.layer = 7;
+
+        PlatformNode newNode = new PlatformNode(startNode, nextPlat, startNode.depth + i + 1, PlatformType.Normal);
+        branchNodes.Add(newNode);
+        branchAngle = finalXZ;
+        current = nextPlat.transform.position;
+        retry = 0;                         // ADDED: reset on success
+
+        Vector3 xzDistToFinal = new Vector3(targetPos.x - current.x, 0f, targetPos.z - current.z);
+        float distXZAfter = xzDistToFinal.magnitude;
+        float yGap = Mathf.Abs(targetPos.y - current.y);
+        if (distXZAfter <= MaxXzDistance * 1.15f && yGap <= MaxYchange * 1.5f)
+        {
+            break;
         }
     }
-    
+
+    if (branchNodes.Count > 0) branches.Add(branchNodes);
+}
     
     bool PlatCoverCheck(Vector3 boundMiddle, Vector3 boundSize, float castDistance)
     {
@@ -249,7 +420,6 @@ public class PlatformGeneration : MonoBehaviour
             seed = saveData.GetSeed();
             Random.InitState(seed);
             GenerateLevel();
-            ChooseBranches();
             playerPosition.position = saveData.GetPlayerCordinates();
             mainCam.position = saveData.GetCameraCordinates();
             mainCam.rotation = saveData.GetCameraRotation();
