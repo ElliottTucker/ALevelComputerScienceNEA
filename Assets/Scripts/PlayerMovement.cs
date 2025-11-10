@@ -22,7 +22,7 @@ public class PlayerMovement : MonoBehaviour
    private Rigidbody rb;
    private bool justBounce;
    public WinUI WinUI;
-
+   bool onSlippery;
 
    private Vector3 moveDirection = Vector3.zero; // stores direction from Update
 
@@ -83,7 +83,14 @@ public class PlayerMovement : MonoBehaviour
        Vector3 verticalVelocity = new Vector3(0f, rb.linearVelocity.y,0f);
        Vector3 horizontalVelocity = new Vector3(rb.linearVelocity.x,0f,rb.linearVelocity.z);
        
-       rb.AddForce(horizontalVelocity*-horizontalDrag, ForceMode.Acceleration);
+       float currentHorizontalDrag = horizontalDrag;       
+       if (IsGrounded() && onSlippery)
+       {
+           currentHorizontalDrag = 0f;                       
+       }
+
+       
+       rb.AddForce(horizontalVelocity*-currentHorizontalDrag, ForceMode.Acceleration);
        rb.AddForce(verticalVelocity*-verticalDrag, ForceMode.Acceleration);
        
        if (IsGrounded())
@@ -131,9 +138,21 @@ public class PlayerMovement : MonoBehaviour
            rb.linearVelocity = new  Vector3(rb.linearVelocity.x, 70f, rb.linearVelocity.z);
        }
 
+       if (collision.gameObject.CompareTag("SlipperyPlatform"))
+       {
+           onSlippery = true;
+       }
+
        if (collision.gameObject.CompareTag("WinPlatform"))
        {
            WinUI.ReachEnd();
+       }
+   }
+   private void OnCollisionExit(Collision collision)
+   {
+       if (collision.gameObject.CompareTag("SlipperyPlatform"))
+       {
+           onSlippery = false; 
        }
    }
 }

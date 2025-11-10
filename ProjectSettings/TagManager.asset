@@ -10,6 +10,7 @@ TagManager:
   - BouncyPlatform
   - WinPlatform
   - Camera
+  - SlipperyPlatform
   layers:
   - Default
   - TransparentFX

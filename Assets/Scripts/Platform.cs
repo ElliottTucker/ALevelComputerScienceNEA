@@ -18,6 +18,9 @@ public class Platform : MonoBehaviour
             case PlatformType.Win:
                 gameObject.tag = "WinPlatform";
                 break;
+            case PlatformType.slippery:
+                gameObject.tag = "SlipperyPlatform";
+                break;
         }
     }
 }
