@@ -66,10 +66,10 @@ public class PlayerMovement : MonoBehaviour
        moveDirection = (camFw * inputZ + camR * inputX).normalized;
 
 
-       //checks if:space is being pressed, the player is toching the ground and the players last jump wasnt too recent
+       //checks if:space is being pressed, the player is touching the ground and the players last jump wasnt too recent
        if (Input.GetKey(KeyCode.Space) && IsGrounded() && Time.time > lastJump + jumpCd)
        {
-           //jumps using the jumps force on the player ridgedbody
+           //jumps using the jumps force on the player ridged body
            rb.AddForce(Vector3.up * jumpForce, ForceMode.Impulse);
            lastJump = Time.time;
        }  

@@ -297,7 +297,7 @@ private void GenerateBranch(PlatformNode startNode, float startAngle)
             float localNarrow = Mathf.Lerp(5f, narrow, Mathf.Clamp01((distXZ - snapXZ) / Mathf.Max(nearXZ - snapXZ, 0.0001f)));
             
             float xzDistance = Random.Range(MinXzDistance, MaxXzDistance);
-            //used to changed plat hieght 
+            //used to changed plat height 
             float platsRemaining = Mathf.Max(1, maxBranchSteps - i);
             //calculates y platoform change
             float targetYDistance = Mathf.Clamp((targetPos.y - current.y) / platsRemaining, -MaxYchange, MaxYchange);
@@ -307,8 +307,15 @@ private void GenerateBranch(PlatformNode startNode, float startAngle)
             float yMargin = 0.25f * MaxYchange;
             float remainingY = targetPos.y - current.y;
             if (distXZ > nearXZ) yDistance *= 0.4f;
-            if (remainingY > 0f && yDistance > remainingY - yMargin) yDistance = Mathf.Max(remainingY - yMargin, 0f);
-            if (remainingY < 0f && yDistance < remainingY + yMargin) yDistance = Mathf.Min(remainingY + yMargin, 0f);
+            if (remainingY > 0f && yDistance > remainingY - yMargin)
+            {
+                yDistance = Mathf.Max(remainingY - yMargin, 0f);
+            }
+
+            if (remainingY < 0f && yDistance < remainingY + yMargin)
+            {
+                yDistance = Mathf.Min(remainingY + yMargin, 0f);
+            }
 
             bool placed = false;
             float finalXZ = targetXZDegree;
@@ -316,6 +323,7 @@ private void GenerateBranch(PlatformNode startNode, float startAngle)
 
             int attempts = Mathf.Max(1, maxBranchStepRetries);
 
+            
             for (int j = 0; j < attempts; j++)
             {
                 float xzAngle;
@@ -332,8 +340,7 @@ private void GenerateBranch(PlatformNode startNode, float startAngle)
 
                 Vector3 dir = new Vector3(Mathf.Cos(xzAngle * Mathf.Deg2Rad), 0f, Mathf.Sin(xzAngle * Mathf.Deg2Rad)).normalized;
                 Vector3 platPosFinal = current + dir * xzDistance + new Vector3(0f, yDistance, 0f);
-
-               // if (platPosFinal.y > topCut) continue;
+                
 
                 if (nextPlat == null)
                 {
@@ -341,8 +348,19 @@ private void GenerateBranch(PlatformNode startNode, float startAngle)
                     nextPlat.layer = 0;
                     Platform platformComponent = nextPlat.AddComponent<Platform>();
                     Vector3 platSize = new Vector3(Random.Range(MinSize, MaxSize), 0.2f, Random.Range(MinSize, MaxSize));
-                    platformComponent.CreatePlatform(PlatformType.Normal, platSize);
+                    PlatformType platformType;
+                    if (Random.Range(1, 10) == 2)
+                    {
+                        nextPlat.GetComponent<Renderer>().material.color = Color.cyan;
+                        platformType = PlatformType.slippery;
+                    }
+                    else
+                    {
+                        platformType = PlatformType.Normal;
+                    }
+                    platformComponent.CreatePlatform(platformType, platSize);
                 }
+                
 
                 nextPlat.transform.position = platPosFinal;
                 Physics.SyncTransforms();
@@ -359,8 +377,11 @@ private void GenerateBranch(PlatformNode startNode, float startAngle)
                     prevEnabled = col.enabled;
                     col.enabled = false;
                 }
-                bool blocked = BouncyCoverCheck(boundMiddle, boundsize, castDistance + 20f) || PlatCoverCheck(boundMiddle, boundsize, castDistance);
-                if (col != null) col.enabled = prevEnabled;
+                bool blocked = BouncyCoverCheck(boundMiddle, boundsize, castDistance + 20f) || PlatCoverCheck(boundMiddle, boundsize, castDistance)||PlatUnderCheck(boundMiddle, boundsize, 10f);
+                if (col != null)
+                {
+                    col.enabled = prevEnabled;
+                }
 
                 if (!blocked)
                 {
@@ -467,6 +488,23 @@ private void GenerateBranch(PlatformNode startNode, float startAngle)
             {
                 return false;
             }
+            return true;
+        }
+        else if (Physics.BoxCast(boundMiddle, boundSize, Vector3.down, out RaycastHit hit2, Quaternion.identity, castDistance, platLayerMask))
+        {
+            if (hit2.collider.gameObject == null || hit2.collider.gameObject == this)
+            {
+                return false;
+            }
+            return true;
+        }
+        return false;
+    }
+
+    bool PlatUnderCheck(Vector3 boundMiddle, Vector3 boundSize, float castDistance)
+    {
+        if (Physics.BoxCast(boundMiddle, boundSize, Vector3.up, out RaycastHit hit, Quaternion.identity, castDistance, platLayerMask))
+        {
             return true;
         }
         return false;
